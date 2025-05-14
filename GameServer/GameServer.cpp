@@ -4,7 +4,13 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <windows.h>
 
+
+mutex m;
+
+
+#pragma region spinlockExample
 
 class SpinLock1
 {
@@ -29,7 +35,7 @@ private:
 };
 
 class Spinlock2 {
-	
+
 
 public:
 	void lock() {
@@ -46,10 +52,8 @@ private:
 	std::atomic_flag flag = ATOMIC_FLAG_INIT;
 };
 
-int32 sum = 0;
-mutex m;
 SpinLock1 spinLock;
-
+int32 sum = 0;
 
 void Add() {
 	for (int i = 0; i < 1000000; ++i) {
@@ -64,16 +68,46 @@ void Sub() {
 		sum--;
 	}
 }
+#pragma endregion
+
+#pragma region eventExample
+queue<int32> q;
+HANDLE handle;
+
+void Producer() {
+
+	while(true){
+		unique_lock<mutex> lock(m);
+		q.push(1);
+
+		::SetEvent(handle);
+
+		this_thread::sleep_for(chrono::milliseconds(100));
+	}
+}
+
+void Consumer() {
+
+	while (true) {
+
+		::WaitForSingleObject(handle, INFINITE);
+
+		unique_lock<mutex> lock(m);
+		if (!q.empty()) {
+			q.pop();
+		}
+	}
+}
+
+#pragma endregion
+
 
 int main()
 {
-	thread t1(Add);
-	thread t2(Sub);
-
-	t1.join();
-	t2.join();
+	handle = ::CreateEvent(NULL, FALSE, FALSE, NULL);
 
 
-	cout << "sum = " << sum << endl;
+	::CloseHandle(handle);
+
 
 }
