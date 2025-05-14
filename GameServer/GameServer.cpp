@@ -76,9 +76,12 @@ HANDLE handle;
 
 void Producer() {
 
-	while(true){
-		unique_lock<mutex> lock(m);
-		q.push(1);
+	while (true) {
+
+		{
+			unique_lock<mutex> lock(m);
+			q.push(1);
+		}
 
 		::SetEvent(handle);
 
@@ -91,10 +94,12 @@ void Consumer() {
 	while (true) {
 
 		::WaitForSingleObject(handle, INFINITE);
+		{
+			unique_lock<mutex> lock(m);
+			if (!q.empty()) {
+				q.pop();
+			}
 
-		unique_lock<mutex> lock(m);
-		if (!q.empty()) {
-			q.pop();
 		}
 	}
 }
