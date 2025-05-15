@@ -94,7 +94,7 @@ void Consumer() {
 	while (true) {
 
 		::WaitForSingleObject(handle, INFINITE);
-		{
+		{ 
 			unique_lock<mutex> lock(m);
 			if (!q.empty()) {
 				q.pop();
@@ -107,12 +107,35 @@ void Consumer() {
 #pragma endregion
 
 
+#pragma region thread local storage Example	
+
+thread_local int32 LThreadId = 0;
+
+void ThreadLocalMain(int32 id)
+{
+	LThreadId = id;
+	cout << "Thread ID: " << LThreadId << endl;
+}
+
+void ThreadLocalFunc() {
+	vector<thread> threads;
+
+
+	for (int i = 0; i < 10; ++i) {
+		threads.push_back(thread(ThreadLocalMain, i));
+	}
+
+	for (thread& t : threads) {
+		t.join();
+	}
+
+}
+
+
+#pragma endregion
+
+
 int main()
 {
-	handle = ::CreateEvent(NULL, FALSE, FALSE, NULL);
-
-
-	::CloseHandle(handle);
-
-
+	ThreadLocalFunc();
 }
