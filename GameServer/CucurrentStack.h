@@ -43,3 +43,100 @@ private:
 	condition_variable _condVar;
 };
 
+
+template<typename T>
+class LockFreeStack {
+
+	struct Node {
+
+		Node(const T& value) : data(value), next(nullptr) {
+		}
+
+
+		T data;
+		Node* next;
+	};
+
+public:
+
+	void Push(const T& value) {
+		Node* node = new Node(value);
+		node->next = _head;
+		while (_head.compare_exchange_weak(node->next, node) == false) {
+		}
+	}
+
+	bool TryPop(T& value) {
+
+		++_popCount;
+
+		Node* oldHead = _head;
+
+		while (oldHead != nullptr && _head.compare_exchange_weak(oldHead, oldHead->next) == false) {
+			
+		}
+
+		if (oldHead == nullptr) {
+			--_popCount
+			return false;
+		}
+
+		value = std::move(oldHead->data);
+		TryDelete(oldHead);
+		return true;
+	}
+
+	void TryDelete(Node* oldHead) {
+		
+		if (_Popcount == 1) {
+
+			Node* node = _pendingList.exchange(nullptr);
+
+			if (--_popCount == 0) {
+				DeleteNodes(node);
+			}
+			else {
+				ChainPendingNodeList(node);
+			}
+
+			delete oldHead;
+		}
+		else {
+			ChainPaendingNodeList(oldHead);
+			--_popCount;
+		}
+	}
+
+	static void DeleteNodes(Node* node) {
+		while (node != nullptr) {
+			Node* next = node->next;
+			delete node;
+			node = next;
+		}
+	}
+
+	void ChainPaendingNodeList(Node* first, Node* last) {
+		
+		last->next = _pendingList;
+
+		while (_pendingList.compare_exchange_weak(last->next, first) == false) {
+		}
+	}
+
+	void ChainPendingNodeList(Node* node) {
+		Node* last = node;
+		while (last->data != nullptr) {
+			last = last->next;
+		}	
+		ChainPaendingNodeList(node, last);
+	}
+
+	void ChainPendingNode(Node* node) {
+		ChainPaendingNodeList(node, node);
+	}
+
+private:
+	atomic<Node*> _head;
+	atomic<uint32> _popCount = 0;
+	atomic<Node*> _pendingList;
+};
